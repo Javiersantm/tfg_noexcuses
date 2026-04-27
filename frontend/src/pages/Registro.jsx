@@ -1,32 +1,43 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 export default function Registro() {
   const [paso, setPaso] = useState(1);
+  const navigate = useNavigate(); // Herramienta para redirigir a otras páginas
 
   const [formData, setFormData] = useState({
-    nombre: '', apellidos: '', username: '', correo: '', contrasena: '',
-    edad: '', peso: '', altura: '', objetivo: 'GANAR_PESO', nivel: 'PRINCIPIANTE', diasEntreno: 3
+      nombre: '', apellidos: '', username: '', correo: '', contrasena: '',
+      fechaNacimiento: '', peso: '', altura: '', objetivo: 'GANAR_PESO', nivel: 'PRINCIPIANTE', diasEntreno: 3
   });
 
   const siguientePaso = () => setPaso(paso + 1);
   const pasoAnterior = () => setPaso(paso - 1);
 
-  // Función mágica que actualiza el estado cada vez que el usuario escribe
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Función de registro correctamente ubicada ANTES del return
+  const finalizarRegistro = async () => {
+    try {
+      const response = await api.post('/auth/registro', formData);
+      alert("¡Registro completado! Ya no hay excusas.");
+      navigate('/login'); // Lo mandamos al login (que crearemos pronto)
+    } catch (error) {
+      alert("Error en el registro: " + (error.response?.data || error.message));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4 relative">
-      
+
       <Link to="/" className="absolute top-6 left-6 text-gray-400 hover:text-white transition-colors">
         ← Volver
       </Link>
 
       <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-lg border border-gray-700">
-        
+
         {/* Indicador de Pasos */}
         <div className="flex justify-between items-center mb-8">
           <div className={`h-2 w-1/3 rounded ${paso >= 1 ? 'bg-red-600' : 'bg-gray-600'} transition-colors duration-500`}></div>
@@ -40,12 +51,7 @@ export default function Registro() {
           {paso === 3 && "Tus Objetivos"}
         </h2>
 
-        {/* =========================================
-            ZONA DEL FORMULARIO (LOS 3 PASOS)
-            ========================================= */}
         <div className="min-h-[250px] flex flex-col gap-4">
-          
-          {/* PASO 1: Datos de Cuenta */}
           {paso === 1 && (
             <>
               <div className="flex gap-4">
@@ -58,21 +64,25 @@ export default function Registro() {
             </>
           )}
 
-          {/* PASO 2: Tu Físico */}
           {paso === 2 && (
-            <>
-              <label className="text-sm text-gray-400">Edad (años)</label>
-              <input type="number" name="edad" value={formData.edad} onChange={handleChange} placeholder="Ej: 24" className="w-full p-3 bg-gray-700 rounded-lg outline-none focus:ring-2 focus:ring-red-600 transition mb-2" />
-              
+              <>
+              <label className="text-sm text-gray-400">Fecha de Nacimiento</label>
+              <input
+                type="date"
+                name="fechaNacimiento"
+                value={formData.fechaNacimiento}
+                onChange={handleChange}
+                className="w-full p-3 bg-gray-700 rounded-lg outline-none focus:ring-2 focus:ring-red-600 transition mb-2"
+              />
+
               <label className="text-sm text-gray-400">Peso (kg)</label>
               <input type="number" name="peso" value={formData.peso} onChange={handleChange} placeholder="Ej: 75.5" className="w-full p-3 bg-gray-700 rounded-lg outline-none focus:ring-2 focus:ring-red-600 transition mb-2" />
-              
+
               <label className="text-sm text-gray-400">Altura (metros)</label>
               <input type="number" step="0.01" name="altura" value={formData.altura} onChange={handleChange} placeholder="Ej: 1.80" className="w-full p-3 bg-gray-700 rounded-lg outline-none focus:ring-2 focus:ring-red-600 transition" />
             </>
           )}
 
-          {/* PASO 3: Objetivos */}
           {paso === 3 && (
             <>
               <label className="text-sm text-gray-400">Objetivo principal</label>
@@ -94,10 +104,8 @@ export default function Registro() {
               <input type="number" name="diasEntreno" min="1" max="7" value={formData.diasEntreno} onChange={handleChange} className="w-full p-3 bg-gray-700 rounded-lg outline-none focus:ring-2 focus:ring-red-600 transition" />
             </>
           )}
-
         </div>
 
-        {/* Botones de Navegación */}
         <div className="flex justify-between mt-8">
           {paso > 1 ? (
             <button onClick={pasoAnterior} className="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold transition-colors">
@@ -110,7 +118,7 @@ export default function Registro() {
               Siguiente
             </button>
           ) : (
-            <button className="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition-colors shadow-lg shadow-green-600/30">
+            <button onClick={finalizarRegistro} className="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition-colors shadow-lg shadow-green-600/30">
               Finalizar
             </button>
           )}
@@ -119,22 +127,4 @@ export default function Registro() {
       </div>
     </div>
   );
-
-  const finalizarRegistro = async () => {
-  try {
-    const response = await api.post('/auth/registro', formData);
-    alert("¡Registro completado! Ya no hay excusas.");
-    // Aquí podrías usar useNavigate de react-router-dom para mandarlo al Login
-  } catch (error) {
-    alert("Error en el registro: " + (error.response?.data || error.message));
-  }
-};
-
-// Y en el botón de Finalizar:
-<button 
-  onClick={finalizarRegistro}
-  className="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition-colors shadow-lg shadow-green-600/30"
->
-  Finalizar
-</button>
 }

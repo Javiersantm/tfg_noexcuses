@@ -49,4 +49,14 @@ public class RutinaController {
             return ResponseEntity.badRequest().body("Error al generar la rutina: " + e.getMessage());
         }
     }
+
+    // 4. NUEVO: Endpoint para devolver la rutina actual del usuario logueado
+    @GetMapping("/mi-rutina")
+    public ResponseEntity<Rutina> obtenerMiRutina(Authentication authentication) {
+        Rutina rutina = rutinaService.obtenerRutinaActiva(authentication.getName());
+        if (rutina == null) {
+            return ResponseEntity.noContent().build(); // Devuelve un código 204 (Vacío)
+        }
+        return ResponseEntity.ok(rutina);
+    }
 }

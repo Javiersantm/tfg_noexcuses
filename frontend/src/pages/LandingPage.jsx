@@ -27,9 +27,12 @@ export default function LandingPage() {
          Comenzar
        </Link>
           
-          <button className="w-full sm:w-auto bg-transparent border-2 border-gray-600 hover:border-white text-gray-300 hover:text-white font-bold py-4 px-10 rounded-lg text-lg transition-colors">
-            Iniciar Sesión
-          </button>
+       <Link
+         to="/login"
+         className="w-full sm:w-auto bg-transparent border-2 border-gray-600 hover:border-white text-gray-300 hover:text-white font-bold py-4 px-10 rounded-lg text-lg transition-colors text-center cursor-pointer"
+       >
+         Iniciar Sesión
+       </Link>
         </div>
 
       </div>

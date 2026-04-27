@@ -77,18 +77,18 @@ public class RutinaService {
         int series = determinarSeries(objetivo);
         int descanso = determinarDescanso(objetivo);
 
-        // Lógica súper básica de división de días (¡puedes complicarla todo lo que quieras!)
+        // Lógica súper básica de división de días (adaptada a ExerciseDB 🇺🇸)
         if (dias <= 3) {
             // Rutina FullBody o Dividida en 3
-            rutinaGenerada.getDias().add(crearDiaRutina("Día 1: Pecho y Tríceps", rutinaGenerada, List.of("Pecho", "Tríceps"), series, reps, descanso));
-            rutinaGenerada.getDias().add(crearDiaRutina("Día 2: Espalda y Bíceps", rutinaGenerada, List.of("Espalda", "Bíceps"), series, reps, descanso));
-            rutinaGenerada.getDias().add(crearDiaRutina("Día 3: Piernas y Hombros", rutinaGenerada, List.of("Piernas", "Hombros"), series, reps, descanso));
+            rutinaGenerada.getDias().add(crearDiaRutina("Día 1: Pecho y Tríceps", rutinaGenerada, List.of("pectorals", "triceps"), series, reps, descanso));
+            rutinaGenerada.getDias().add(crearDiaRutina("Día 2: Espalda y Bíceps", rutinaGenerada, List.of("lats", "upper back", "biceps"), series, reps, descanso));
+            rutinaGenerada.getDias().add(crearDiaRutina("Día 3: Piernas y Hombros", rutinaGenerada, List.of("quads", "hamstrings", "delts"), series, reps, descanso));
         } else {
             // Rutina dividida en 4 o más (Torso/Pierna)
-            rutinaGenerada.getDias().add(crearDiaRutina("Día 1: Torso Pesado", rutinaGenerada, List.of("Pecho", "Espalda"), series, reps, descanso));
-            rutinaGenerada.getDias().add(crearDiaRutina("Día 2: Piernas Pesado", rutinaGenerada, List.of("Piernas"), series, reps, descanso));
-            rutinaGenerada.getDias().add(crearDiaRutina("Día 3: Empujes", rutinaGenerada, List.of("Pecho", "Hombros", "Tríceps"), series, reps, descanso));
-            rutinaGenerada.getDias().add(crearDiaRutina("Día 4: Tirones", rutinaGenerada, List.of("Espalda", "Bíceps"), series, reps, descanso));
+            rutinaGenerada.getDias().add(crearDiaRutina("Día 1: Torso Pesado", rutinaGenerada, List.of("pectorals", "lats", "upper back"), series, reps, descanso));
+            rutinaGenerada.getDias().add(crearDiaRutina("Día 2: Piernas Pesado", rutinaGenerada, List.of("quads", "hamstrings", "calves"), series, reps, descanso));
+            rutinaGenerada.getDias().add(crearDiaRutina("Día 3: Empujes", rutinaGenerada, List.of("pectorals", "delts", "triceps"), series, reps, descanso));
+            rutinaGenerada.getDias().add(crearDiaRutina("Día 4: Tirones", rutinaGenerada, List.of("lats", "upper back", "biceps"), series, reps, descanso));
         }
 
         rutinaRepository.save(rutinaGenerada);
@@ -136,5 +136,29 @@ public class RutinaService {
 
     private int determinarDescanso(Objetivo objetivo) {
         return (objetivo == Objetivo.CONSEGUIR_MUSCULO) ? 90 : 60; // en segundos
+    }
+
+    @Transactional(readOnly = true)
+    public Rutina obtenerRutinaActiva(String username) {
+        Usuario usuario = usuarioRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        List<Rutina> rutinas = rutinaRepository.findByUsuarioOrderByFechaCreacionDesc(usuario);
+
+        if (rutinas.isEmpty()) {
+            return null; // Si no tiene rutinas, devolvemos null
+        }
+
+        Rutina rutinaActiva = rutinas.get(0); // Pillamos la más reciente
+
+        // Truco de JPA: Forzamos a que cargue los días y ejercicios de la base de datos
+        // antes de cerrar la transacción para que no nos dé error "LazyInitializationException"
+        rutinaActiva.getDias().size();
+        rutinaActiva.getDias().forEach(dia -> {
+            dia.getEjerciciosDelDia().size();
+            dia.getEjerciciosDelDia().forEach(ejDia -> ejDia.getEjercicio().getNombre());
+        });
+
+        return rutinaActiva;
     }
 }

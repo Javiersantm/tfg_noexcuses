@@ -1,17 +1,20 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
-import Registro from './pages/Registro'; // ¡Aún no existe, ahora lo creamos!
+import Registro from './pages/Registro';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard'; // <--- Importamos el Dashboard
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* Ruta principal */}
         <Route path="/" element={<LandingPage />} />
-        
-        {/* Ruta para el formulario de registro */}
         <Route path="/registro" element={<Registro />} />
+        <Route path="/login" element={<Login />} />
+
+        {/* Aquí conectamos la ruta con el componente que acabamos de crear */}
+        <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
     </Router>
   );

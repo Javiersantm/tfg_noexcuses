@@ -18,15 +18,19 @@ public class Ejercicio {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    // ID original de la API
+    private String apiId;
+
+    @Column(nullable = false)
     private String nombre;
 
-    @Column(length = 500)
+    @Column(columnDefinition = "TEXT") // Cambiado a TEXT para que quepan bien las instrucciones
     private String descripcion;
 
     @Column(nullable = false)
-    private String grupoMuscular; // Ej: Pecho, Espalda, Piernas, Core...
+    private String grupoMuscular;
 
-    // A futuro podemos guardar una URL de una imagen o vídeo demostrativo
-    private String urlVideoDemonstracion;
+    private String equipo; // Ej: barbell, dumbbell, body weight...
+
+    private String gifUrl; // ¡Aquí guardaremos el enlace al GIF animado!
 }
