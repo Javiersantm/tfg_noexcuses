@@ -1,13 +1,29 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // 🚀 ESTADO PARA LA FOTO DEL SIDEBAR
+  const [fotoUrl, setFotoUrl] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      api.get('/perfil').then(res => {
+        if (res.data.fotoPerfil) {
+          setFotoUrl(`http://localhost:8083/uploads/${res.data.fotoPerfil}`);
+        }
+      }).catch(() => {});
+    }
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('usuario_nombre');
+    localStorage.removeItem('usuario_rol');
     navigate('/login');
   };
 
@@ -15,7 +31,8 @@ export default function Sidebar() {
       { path: '/dashboard', icon: '📊', label: 'Dashboard' },
       { path: '/estadisticas', icon: '📈', label: 'Estadísticas' },
       { path: '/evolucion', icon: '📸', label: 'Evolución' },
-      { path: '/perfil', icon: '👤', label: 'Perfil' }
+      { path: '/perfil', icon: '👤', label: 'Perfil' },
+      { path: '/ajustes', icon: '⚙️', label: 'Ajustes' }
     ];
 
     const rolUsuario = localStorage.getItem('usuario_rol');
@@ -26,10 +43,15 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* 🖥️ VERSIÓN ORDENADOR (SIDEBAR LATERAL) - Oculto en móvil */}
+      {/* 🖥️ VERSIÓN ORDENADOR */}
       <aside className="hidden md:flex w-64 h-full bg-gray-950 border-r border-gray-800 flex-col shadow-2xl z-50 transition-all duration-300">
-        <div className="h-24 flex items-center justify-center border-b border-gray-800">
-          <h1 className="text-3xl font-black text-white uppercase italic tracking-tighter drop-shadow-md">
+
+        {/* 🚀 CABECERA CON AVATAR Y LOGO */}
+        <div className="h-24 flex items-center justify-center border-b border-gray-800 gap-3 px-4">
+          <div className="w-10 h-10 rounded-full bg-gray-800 overflow-hidden flex items-center justify-center text-xl shadow-lg border-2 border-red-600 flex-shrink-0">
+            {fotoUrl ? <img src={fotoUrl} className="w-full h-full object-cover" alt="pfp" /> : "👤"}
+          </div>
+          <h1 className="text-2xl font-black text-white uppercase italic tracking-tighter drop-shadow-md">
             No<span className="text-red-600">Excuses</span>
           </h1>
         </div>
@@ -65,7 +87,7 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* 📱 VERSIÓN MÓVIL (BOTTOM NAVIGATION BAR) - Oculto en ordenador */}
+      {/* 📱 VERSIÓN MÓVIL (BOTTOM NAVIGATION BAR) */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full h-20 bg-gray-950/95 backdrop-blur-md border-t border-gray-800 flex items-center justify-around px-2 z-[100] shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
         {menuItems.map((item) => {
           const activo = location.pathname === item.path;

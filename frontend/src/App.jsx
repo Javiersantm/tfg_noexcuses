@@ -8,6 +8,7 @@ import Perfil from './pages/Perfil';
 import Estadisticas from './pages/Estadisticas';
 import Evolucion from './pages/Evolucion';
 import AdminPanel from './pages/AdminPanel';
+import Ajustes from './pages/Ajustes';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         <Route path="/estadisticas" element={<Estadisticas />} />
         <Route path="/evolucion" element={<Evolucion />} />
         <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/ajustes" element={<Ajustes />} />
       </Routes>
     </Router>
   );

@@ -5,15 +5,18 @@ import Calendario from '../components/Calendario';
 import Sidebar from '../components/Sidebar';
 
 export default function Dashboard() {
+  const [perfilUsuario, setPerfilUsuario] = useState(null); // Guardamos el perfil para leer los ajustes
   const [nombre, setNombre] = useState('');
   const [generando, setGenerando] = useState(false);
   const [rutina, setRutina] = useState(null);
-  const [diaExpandido, setDiaExpandido] = useState(null);
   const [refrescoCalendario, setRefrescoCalendario] = useState(0);
 
-  // 🚀 ESTADO DEL MEGÁFONO DEL ADMIN
-  const [avisoAdmin, setAvisoAdmin] = useState(null);
+  // 🚀 ESTADOS DE SELECCIÓN Y FINALIZACIÓN (BASADOS EN BACKEND)
+  const [diaSeleccionado, setDiaSeleccionado] = useState(null);
+  const [diasCompletadosIds, setDiasCompletadosIds] = useState([]); // Ahora guarda un array de IDs de la BD
+  const [entrenoHoyFinalizado, setEntrenoHoyFinalizado] = useState(false);
 
+  const [avisoAdmin, setAvisoAdmin] = useState(null);
   const navigate = useNavigate();
 
   // 🚀 ESTADOS DEL MODAL DE FEEDBACK
@@ -23,6 +26,7 @@ export default function Dashboard() {
 
   // 🏋️‍♂️ ESTADOS DEL MODO ENTRENANDO (FOCUS)
   const [modoEntrenando, setModoEntrenando] = useState(false);
+  const [cuentaAtras, setCuentaAtras] = useState(null); // Estado para la pantalla "3, 2, 1, ¡YA!"
   const [diaEntrenoActivo, setDiaEntrenoActivo] = useState(null);
   const [ejercicioActualIndex, setEjercicioActualIndex] = useState(0);
   const [registroSeries, setRegistroSeries] = useState({});
@@ -31,17 +35,42 @@ export default function Dashboard() {
   const [tiempoDescanso, setTiempoDescanso] = useState(0);
   const [descansoActivo, setDescansoActivo] = useState(false);
 
-  const cargarRutina = async () => {
+  // 🚀 NUEVA FUNCIÓN MAESTRA QUE CARGA TODA LA VERDAD DESDE EL SERVIDOR
+  const cargarTodo = async () => {
     try {
-      const response = await api.get('/entrenamiento/mi-rutina');
-      if (response.data) {
-        setRutina(response.data);
-        if (response.data.dias?.length > 0) {
-          setDiaExpandido(response.data.dias[0].id);
-        }
+      // Pedimos todo a la vez para que sea rápido
+      const [resPerfil, resRutina, resHistorial, resEstadoSemana] = await Promise.all([
+        api.get('/perfil'),
+        api.get('/entrenamiento/mi-rutina'),
+        api.get('/perfil/historial'),
+        api.get('/entrenamientos/estado-semana').catch(() => ({ data: [] })) // El nuevo endpoint
+      ]);
+
+      setPerfilUsuario(resPerfil.data);
+      if(resPerfil.data.peso) {
+        setFeedback(prev => ({ ...prev, pesoCorporal: resPerfil.data.peso }));
       }
+
+      if (resRutina.data) {
+        setRutina(resRutina.data);
+      } else {
+        setRutina(null);
+      }
+
+      // 1. Array de IDs de días completados (del Backend)
+      setDiasCompletadosIds(resEstadoSemana.data || []);
+
+      // 2. Comprobamos si el último entreno del historial tiene fecha de hoy
+      if (resHistorial.data && resHistorial.data.length > 0) {
+        const ultimaFecha = new Date(resHistorial.data[0].fecha).toLocaleDateString('es-ES');
+        const hoy = new Date().toLocaleDateString('es-ES');
+        setEntrenoHoyFinalizado(ultimaFecha === hoy);
+      } else {
+        setEntrenoHoyFinalizado(false);
+      }
+
     } catch (error) {
-      console.error("Error al cargar la rutina", error);
+      console.error("Error al cargar la información principal", error);
     }
   };
 
@@ -53,15 +82,8 @@ export default function Dashboard() {
       navigate('/login');
     } else {
       setNombre(usuarioGuardado || 'Atleta');
-      cargarRutina();
+      cargarTodo(); // Llamamos a la función maestra
 
-      api.get('/perfil').then(res => {
-        if(res.data.peso) {
-          setFeedback(prev => ({ ...prev, pesoCorporal: res.data.peso }));
-        }
-      }).catch(err => console.error("Error al cargar peso", err));
-
-      // 🚀 BUSCAMOS SI HAY UN AVISO DEL ADMIN ACTIVO
       api.get('/admin/aviso').then(res => {
         if (res.data && res.data.activo && res.data.mensaje.trim() !== '') {
           setAvisoAdmin(res.data.mensaje);
@@ -87,23 +109,42 @@ export default function Dashboard() {
   };
 
   const handleGenerarRutina = async () => {
-    try {
-      setGenerando(true);
-      await api.post('/entrenamiento/generar');
-      alert("¡Rutina generada con éxito!");
-      cargarRutina();
-    } catch (error) {
-      alert("Error al generar: " + (error.response?.data || error.message));
-    } finally {
-      setGenerando(false);
-    }
+      try {
+        setGenerando(true);
+        await api.post('/entrenamiento/generar');
+        alert("¡Rutina generada con éxito!");
+
+        await cargarTodo(); // 🚀 Recargamos todo del backend para ver los cambios
+        setDiaSeleccionado(null);
+
+      } catch (error) {
+        alert("Error al generar: " + (error.response?.data || error.message));
+      } finally {
+        setGenerando(false);
+      }
   };
 
+  // 🚀 LÓGICA DE LA CUENTA ATRÁS Y EMPEZAR
   const comenzarEntrenamiento = (dia) => {
     setDiaEntrenoActivo(dia);
     setEjercicioActualIndex(0);
     setRegistroSeries({});
     setModoEntrenando(true);
+
+    setCuentaAtras(3);
+    let contador = 3;
+
+    const interval = setInterval(() => {
+      contador--;
+      if (contador > 0) {
+        setCuentaAtras(contador);
+      } else if (contador === 0) {
+        setCuentaAtras('¡YA!');
+      } else {
+        setCuentaAtras(null);
+        clearInterval(interval);
+      }
+    }, 1000);
   };
 
   const manejarCambioSerie = (ejDiaId, serieIndex, campo, valor) => {
@@ -112,6 +153,15 @@ export default function Dashboard() {
       ...prev,
       [key]: { ...prev[key], [campo]: valor }
     }));
+  };
+
+  // 🚀 LÓGICA DEL BOTÓN DE COMPLETAR SERIE (✓)
+  const completarSerie = (ejDiaId, serieIndex) => {
+    manejarCambioSerie(ejDiaId, serieIndex, 'completada', true);
+
+    if (perfilUsuario && perfilUsuario.cronometroAutomatico !== false) {
+      iniciarDescanso(90);
+    }
   };
 
   const siguienteEjercicio = () => {
@@ -150,6 +200,7 @@ export default function Dashboard() {
         sensacion: feedback.sensacion,
         eficiencia: feedback.eficiencia,
         pesoCorporal: feedback.pesoCorporal === '' ? null : parseFloat(feedback.pesoCorporal),
+        diaRutinaId: diaEntrenoActivo.id, // 🚀 ENVIAMOS QUÉ DÍA SE COMPLETÓ
         series: arraySeries.filter(s => !isNaN(s.peso))
       };
 
@@ -162,16 +213,34 @@ export default function Dashboard() {
       });
 
       alert(response.data);
+
       setRefrescoCalendario(prev => prev + 1);
       setMostrarModal(false);
       setModoEntrenando(false);
-      setArchivoFoto(null); // Limpiamos la foto al terminar
+      setArchivoFoto(null);
+      setDiaSeleccionado(null);
+
+      // 🚀 UNA VEZ ENVIADO, LE PEDIMOS AL SERVIDOR QUE NOS ACTUALICE LA VISTA
+      await cargarTodo();
+
     } catch (error) {
       alert("Error al guardar: " + (error.response?.data || error.message));
     }
   };
 
   if (modoEntrenando && diaEntrenoActivo) {
+    // 🚀 PANTALLA ROJA DE CUENTA ATRÁS
+    if (cuentaAtras !== null) {
+      return (
+        <div className="min-h-screen bg-red-600 flex flex-col items-center justify-center text-white z-[200]">
+          <h1 className="text-[150px] md:text-[250px] font-black italic tracking-tighter drop-shadow-2xl animate-pulse">
+            {cuentaAtras}
+          </h1>
+          <p className="text-xl md:text-2xl font-bold uppercase tracking-widest opacity-80 mt-4">Prepárate para sufrir</p>
+        </div>
+      );
+    }
+
     const ejDia = diaEntrenoActivo.ejerciciosDelDia[ejercicioActualIndex];
     const esUltimo = ejercicioActualIndex === diaEntrenoActivo.ejerciciosDelDia.length - 1;
 
@@ -211,8 +280,10 @@ export default function Dashboard() {
               <div className="absolute top-0 w-full h-1 bg-red-600/30">
                  <div className={`h-full bg-red-500 transition-all ${descansoActivo ? 'w-full animate-pulse' : 'w-0'}`}></div>
               </div>
-              <h3 className="text-gray-500 font-black uppercase tracking-widest mb-2 text-xs md:text-sm">Cronómetro</h3>
-              <div className="text-6xl md:text-7xl font-black text-white font-mono mb-6 tracking-tighter">
+              <h3 className="text-gray-500 font-black uppercase tracking-widest mb-2 text-xs md:text-sm">
+                Descanso {perfilUsuario?.cronometroAutomatico !== false && <span className="text-red-500 ml-1">(Auto)</span>}
+              </h3>
+              <div className={`text-6xl md:text-7xl font-black font-mono mb-6 tracking-tighter ${descansoActivo ? 'text-red-500 animate-pulse' : 'text-white'}`}>
                 {Math.floor(tiempoDescanso / 60)}:{(tiempoDescanso % 60).toString().padStart(2, '0')}
               </div>
               <div className="flex gap-2 w-full max-w-sm">
@@ -235,40 +306,53 @@ export default function Dashboard() {
             </div>
 
             <div className="bg-gray-900 p-4 md:p-6 rounded-3xl border border-gray-800 shadow-lg flex flex-col gap-3">
-              <div className="grid grid-cols-12 gap-2 text-gray-500 font-bold text-[10px] md:text-xs uppercase tracking-widest text-center px-2">
+              <div className="grid grid-cols-12 gap-2 text-gray-500 font-bold text-[10px] md:text-xs uppercase tracking-widest text-center px-1">
                 <div className="col-span-2">Nº</div>
-                <div className="col-span-5">Kilos (KG)</div>
-                <div className="col-span-5">Reps</div>
+                <div className="col-span-4">KG</div>
+                <div className="col-span-4">Reps</div>
+                <div className="col-span-2">Hecho</div>
               </div>
 
               {Array.from({ length: ejDia.series }).map((_, i) => {
                 const valKey = `${ejDia.ejercicio.id}-${i}`;
-                const vals = registroSeries[valKey] || { peso: '', reps: ejDia.repeticiones };
+                const vals = registroSeries[valKey] || { peso: '', reps: ejDia.repeticiones, completada: false };
 
                 return (
-                  <div key={i} className="grid grid-cols-12 gap-2 md:gap-3 items-center group bg-gray-950 p-2 md:p-3 rounded-2xl border border-gray-800">
+                  <div key={i} className={`grid grid-cols-12 gap-2 md:gap-3 items-center group p-2 md:p-3 rounded-2xl border transition-all ${vals.completada ? 'bg-green-900/10 border-green-500/30' : 'bg-gray-950 border-gray-800'}`}>
                     <div className="col-span-2 flex justify-center">
-                      <span className="bg-gray-800 w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-xl font-black text-gray-400">{i + 1}</span>
+                      <span className={`w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-xl font-black ${vals.completada ? 'bg-green-600/20 text-green-500' : 'bg-gray-800 text-gray-400'}`}>{i + 1}</span>
                     </div>
-                    <div className="col-span-5">
+                    <div className="col-span-4">
                       <input
                         type="number"
                         step="0.1"
                         min="0"
                         value={vals.peso}
+                        disabled={vals.completada}
                         onChange={(e) => manejarCambioSerie(ejDia.ejercicio.id, i, 'peso', e.target.value)}
                         placeholder="Ej: 20"
-                        className="w-full bg-transparent text-white font-black text-xl md:text-2xl p-2 rounded-lg border-2 border-transparent focus:border-red-500 focus:bg-gray-800 outline-none text-center transition-all"
+                        className="w-full bg-transparent text-white font-black text-xl md:text-2xl p-2 rounded-lg border-2 border-transparent focus:border-red-500 focus:bg-gray-800 outline-none text-center disabled:opacity-50 transition-all"
                       />
                     </div>
-                    <div className="col-span-5">
+                    <div className="col-span-4">
                       <input
                         type="number"
                         min="0"
                         value={vals.reps}
+                        disabled={vals.completada}
                         onChange={(e) => manejarCambioSerie(ejDia.ejercicio.id, i, 'reps', e.target.value)}
-                        className="w-full bg-transparent text-white font-black text-xl md:text-2xl p-2 rounded-lg border-2 border-transparent focus:border-red-500 focus:bg-gray-800 outline-none text-center transition-all"
+                        className="w-full bg-transparent text-white font-black text-xl md:text-2xl p-2 rounded-lg border-2 border-transparent focus:border-red-500 focus:bg-gray-800 outline-none text-center disabled:opacity-50 transition-all"
                       />
+                    </div>
+
+                    {/* 🚀 BOTÓN DE CHECK PARA MARCAR SERIE Y ACTIVAR CRONO */}
+                    <div className="col-span-2 flex justify-center">
+                      <button
+                        onClick={() => vals.completada ? manejarCambioSerie(ejDia.ejercicio.id, i, 'completada', false) : completarSerie(ejDia.ejercicio.id, i)}
+                        className={`w-full h-full min-h-[40px] rounded-xl font-black text-lg flex items-center justify-center transition-all active:scale-95 border ${vals.completada ? 'bg-green-600 text-white border-green-500 shadow-lg shadow-green-600/30' : 'bg-gray-800 text-gray-500 hover:bg-gray-700 hover:text-white border-gray-700'}`}
+                      >
+                        ✓
+                      </button>
                     </div>
                   </div>
                 );
@@ -357,7 +441,6 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col md:flex-row h-screen bg-gray-950 text-gray-100 font-sans overflow-hidden">
 
-      {/* 🚀 BANNER DEL MEGÁFONO */}
       {avisoAdmin && (
         <div className="absolute top-0 left-0 w-full z-[100] bg-gradient-to-r from-yellow-600 to-orange-600 p-3 text-center shadow-lg animate-fade-in">
            <p className="text-white font-black text-sm uppercase tracking-tighter">
@@ -368,7 +451,6 @@ export default function Dashboard() {
 
       <Sidebar />
 
-      {/* 🚀 Ajustamos un poco el padding superior por si hay aviso */}
       <div className={`flex-1 overflow-y-auto custom-scrollbar pb-24 md:pb-0 ${avisoAdmin ? 'pt-12' : ''}`}>
         <header className="p-6 md:p-8 pb-0 max-w-7xl mx-auto flex justify-between items-end">
           <div>
@@ -386,7 +468,7 @@ export default function Dashboard() {
           <div className="flex flex-col gap-4">
             <h2 className="text-2xl font-bold text-white border-b border-gray-800 pb-2">Plan de Entrenamiento</h2>
 
-            <div className="bg-gray-900 p-6 rounded-3xl border border-gray-800 shadow-2xl flex flex-col relative">
+            <div className="bg-gray-900 p-6 rounded-3xl border border-gray-800 shadow-2xl flex flex-col relative h-full">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-red-800"></div>
 
               {rutina ? (
@@ -398,51 +480,58 @@ export default function Dashboard() {
                     </button>
                   </div>
 
-                  <div className="flex flex-col gap-4 pb-4">
-                    {rutina.dias.map((dia) => (
-                      <div key={dia.id} className="bg-gray-950 rounded-2xl shadow-lg border border-gray-800 overflow-hidden transition-all duration-300">
-                        <button onClick={() => setDiaExpandido(diaExpandido === dia.id ? null : dia.id)} className="w-full flex justify-between items-center p-4 bg-gradient-to-r hover:from-gray-900 hover:to-gray-800 transition-all focus:outline-none">
-                          <h4 className="font-bold text-lg text-white text-left">{dia.nombreDia}</h4>
-                          <span className={`transform transition-transform text-red-500 font-bold ${diaExpandido === dia.id ? 'rotate-180' : 'rotate-0'}`}>▼</span>
-                        </button>
-                        {diaExpandido === dia.id && (
-                          <div className="p-4 pt-0 flex flex-col gap-3 bg-gray-950 border-t border-gray-800 mt-2">
-                            {dia.ejerciciosDelDia.map((ejDia) => (
-                              <div key={ejDia.id} className="flex flex-col gap-2 bg-gray-900 p-3 rounded-xl border border-gray-800 hover:border-red-500/50 transition-colors group">
-                                <div className="flex gap-4 items-center">
-                                  <div className="w-16 h-16 rounded-lg bg-white flex-shrink-0 overflow-hidden flex items-center justify-center p-1 relative border-2 border-gray-700">
-                                    <img
-                                      src={`https://exercisedb.p.rapidapi.com/image?exerciseId=${ejDia.ejercicio.apiId}&resolution=180&rapidapi-key=75e4927375mshb3c58f8659d6bbbp18e009jsn22c1a78c5dc1`}
-                                      alt={ejDia.ejercicio.nombre}
-                                      className="w-full h-full object-contain rounded"
-                                      loading="lazy"
-                                      onError={(e) => {
-                                        e.target.onerror = null;
-                                        e.target.src = 'https://cdn-icons-png.flaticon.com/512/2964/2964514.png';
-                                        e.target.className = "w-10 h-10 opacity-50";
-                                      }}
-                                    />
-                                  </div>
-                                  <div className="flex-1">
-                                    <p className="font-bold text-white text-sm md:text-base capitalize leading-tight mb-1">{ejDia.ejercicio.nombre}</p>
-                                    <span className="inline-block bg-red-600/10 text-red-500 text-xs font-bold px-2 py-1 rounded border border-red-500/20">{ejDia.series} x {ejDia.repeticiones} reps</span>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
+                  <div className="flex flex-col gap-3 pb-4 flex-1">
+                    {rutina.dias.map((dia) => {
+                      // 🚀 VERIFICAMOS CON EL ARRAY DE IDs DEL BACKEND
+                      const completado = diasCompletadosIds.includes(dia.id);
+                      const seleccionado = diaSeleccionado?.id === dia.id;
 
-                            <button
-                              onClick={() => comenzarEntrenamiento(dia)}
-                              className="mt-4 w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-black py-4 rounded-xl shadow-lg shadow-red-600/30 transform transition-all hover:-translate-y-1 flex items-center justify-center gap-2 active:scale-95 uppercase tracking-widest text-sm"
-                            >
-                              <span className="text-xl">🏋️‍♂️</span> Iniciar Entreno
-                            </button>
-
+                      return (
+                        <div
+                          key={dia.id}
+                          onClick={() => !completado && !entrenoHoyFinalizado && setDiaSeleccionado(dia)}
+                          className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex justify-between items-center ${
+                            completado
+                              ? 'bg-green-900/20 border-green-500/50 text-green-400 cursor-default'
+                              : seleccionado
+                                ? 'bg-red-900/20 border-red-500 shadow-lg shadow-red-500/20'
+                                : entrenoHoyFinalizado
+                                  ? 'bg-gray-950 border-gray-800 opacity-50 cursor-not-allowed'
+                                  : 'bg-gray-950 border-gray-800 hover:border-gray-600'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{completado ? '✅' : '💪'}</span>
+                            <h4 className={`font-bold text-lg ${completado ? 'text-green-500' : 'text-white'}`}>
+                              {dia.nombreDia}
+                            </h4>
                           </div>
-                        )}
-                      </div>
-                    ))}
+                          {completado && <span className="text-xs font-bold uppercase tracking-widest text-green-500 bg-green-500/10 px-3 py-1 rounded-lg">Hecho</span>}
+                        </div>
+                      );
+                    })}
                   </div>
+
+                  <div className="mt-4 border-t border-gray-800 pt-6">
+                    {entrenoHoyFinalizado ? (
+                      <button disabled className="w-full bg-green-600/20 border border-green-500/50 text-green-500 font-black py-4 rounded-xl flex justify-center items-center gap-2 uppercase tracking-widest text-sm cursor-not-allowed shadow-lg shadow-green-500/10">
+                        <span className="text-xl">🏆</span> Entreno de hoy finalizado
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => comenzarEntrenamiento(diaSeleccionado)}
+                        disabled={!diaSeleccionado}
+                        className={`w-full font-black py-4 rounded-xl flex justify-center items-center gap-2 uppercase tracking-widest text-sm transition-all shadow-lg active:scale-95 ${
+                          diaSeleccionado
+                            ? 'bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white shadow-red-600/30'
+                            : 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
+                        }`}
+                      >
+                        <span className="text-xl">🏋️‍♂️</span> {diaSeleccionado ? 'Empezar Entreno' : 'Selecciona un día'}
+                      </button>
+                    )}
+                  </div>
+
                 </div>
               ) : (
                 <div className="flex flex-col justify-center items-center h-full text-center my-auto py-10">
