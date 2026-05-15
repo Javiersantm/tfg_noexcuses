@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -25,58 +26,75 @@ public class ExerciseSyncService {
 
     @Transactional
     public void sincronizarEjerciciosDesdeAPI() {
-        // Solo llamamos a la API si la tabla está vacía
-        if (ejercicioRepository.count() > 0) {
+        if (ejercicioRepository.count() > 50) {
             System.out.println("✅ La base de datos ya tiene ejercicios. Saltando sincronización externa.");
             return;
         }
 
-        System.out.println("🚀 Descargando ejercicios reales desde ExerciseDB (RapidAPI)...");
+        System.out.println("🚀 Descargando ejercicios por grupos musculares...");
 
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
-
-        // 👇👇 ¡Pega aquí tu clave de RapidAPI entre las comillas! 👇👇
+        // Asegúrate de que esta es tu API Key actual de RapidAPI
         headers.set("X-RapidAPI-Key", "e4728b2225msh97fd1af6ca92ed2p16d004jsna9f4e848aad3");
         headers.set("X-RapidAPI-Host", "exercisedb.p.rapidapi.com");
 
         HttpEntity<String> entity = new HttpEntity<>("parameters", headers);
 
-        try {
-            // Descargamos 150 ejercicios reales de golpe
-            ResponseEntity<ExerciseDbDto[]> response = restTemplate.exchange(
-                    "https://exercisedb.p.rapidapi.com/exercises?limit=150",
-                    HttpMethod.GET,
-                    entity,
-                    ExerciseDbDto[].class
-            );
+        // Los 10 grupos musculares exactos
+        List<String> bodyParts = Arrays.asList(
+                "back", "cardio", "chest", "lower arms", "lower legs",
+                "neck", "shoulders", "upper arms", "upper legs", "waist"
+        );
 
-            ExerciseDbDto[] ejerciciosApi = response.getBody();
+        int totalDescargados = 0;
 
-            if (ejerciciosApi != null) {
-                List<Ejercicio> nuevosEjercicios = new ArrayList<>();
+        for (String part : bodyParts) {
+            try {
+                // 🚀 Usamos el comodín {part} para que Spring maneje los espacios de lower arms, etc.
+                String url = "https://exercisedb.p.rapidapi.com/exercises/bodyPart/{part}?limit=10";
 
-                for (ExerciseDbDto dto : ejerciciosApi) {
-                    // Juntamos las instrucciones en un solo texto separado por puntos
-                    String instrucciones = dto.getInstructions() != null ? String.join(". ", dto.getInstructions()) : "Sin instrucciones.";
+                ResponseEntity<ExerciseDbDto[]> response = restTemplate.exchange(
+                        url,
+                        HttpMethod.GET,
+                        entity,
+                        ExerciseDbDto[].class,
+                        part
+                );
 
-                    Ejercicio ej = Ejercicio.builder()
-                            .apiId(dto.getId())
-                            .nombre(dto.getName())
-                            .grupoMuscular(dto.getTarget())
-                            .equipo(dto.getEquipment())
-                            .gifUrl(dto.getGifUrl())
-                            .descripcion(instrucciones)
-                            .build();
-                    nuevosEjercicios.add(ej);
+                ExerciseDbDto[] ejerciciosApi = response.getBody();
+
+                if (ejerciciosApi != null) {
+                    List<Ejercicio> nuevosEjercicios = new ArrayList<>();
+                    for (ExerciseDbDto dto : ejerciciosApi) {
+
+                        // 🚀 EXTRAEMOS LA DESCRIPCIÓN: Priorizamos el nuevo campo 'description'.
+                        // Si no viene, intentamos unir las 'instructions'. Si no hay nada, texto por defecto.
+                        String textoDescripcion = "Sin descripción.";
+                        if (dto.getDescription() != null && !dto.getDescription().trim().isEmpty()) {
+                            textoDescripcion = dto.getDescription();
+                        } else if (dto.getInstructions() != null && !dto.getInstructions().isEmpty()) {
+                            textoDescripcion = String.join(". ", dto.getInstructions());
+                        }
+
+                        Ejercicio ej = Ejercicio.builder()
+                                .apiId(dto.getId())
+                                .nombre(dto.getName())
+                                .grupoMuscular(dto.getBodyPart().toLowerCase())
+                                .equipo(dto.getEquipment())
+                                .gifUrl(dto.getGifUrl())
+                                .descripcion(textoDescripcion) // Asignamos el texto limpio
+                                .build();
+                        nuevosEjercicios.add(ej);
+                    }
+                    ejercicioRepository.saveAll(nuevosEjercicios);
+                    totalDescargados += nuevosEjercicios.size();
+                    System.out.println("✅ Descargados " + nuevosEjercicios.size() + " de: " + part);
                 }
-
-                ejercicioRepository.saveAll(nuevosEjercicios);
-                System.out.println("🔥 ¡ÉXITO! Se han descargado e insertado " + nuevosEjercicios.size() + " ejercicios con GIFs animados en la base de datos.");
+            } catch (Exception e) {
+                System.err.println("❌ Error al descargar " + part + ": " + e.getMessage());
             }
-
-        } catch (Exception e) {
-            System.err.println("❌ Error crítico al conectar con ExerciseDB: " + e.getMessage());
         }
+        System.out.println("🔥 ¡ÉXITO! Se han descargado e insertado " + totalDescargados + " ejercicios.");
     }
 }

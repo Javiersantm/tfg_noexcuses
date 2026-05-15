@@ -27,30 +27,36 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        // 1. LLAMAMOS A NUESTRA API DE EJERCICIOS 👇
         exerciseSyncService.sincronizarEjerciciosDesdeAPI();
 
-        // 2. CREAMOS EL USUARIO DE PRUEBA DE SIEMPRE
-        if (usuarioRepository.count() == 0) {
+        if (usuarioRepository.findByUsername("javi_admin").isEmpty()) {
+            Usuario admin = Usuario.builder()
+                    .nombre("Administrador")
+                    .apellidos("No Excuses")
+                    .username("javi_admin")
+                    .correo("admin@noexcuses.com")
+                    .contrasena(passwordEncoder.encode("admin1234"))
+                    .rol(Rol.ADMIN)
+                    .activo(true)
+                    .tieneRutina(false)
+                    .build();
+            usuarioRepository.save(admin);
+            System.out.println("✅ Super Administrador creado: javi_admin / admin1234");
+        }
+
+        // Usuario de prueba normal
+        if (usuarioRepository.findByUsername("javip").isEmpty()) {
             Usuario testUser = Usuario.builder()
                     .nombre("Javier")
                     .apellidos("San")
                     .username("javip")
                     .correo("javi@test.com")
                     .contrasena(passwordEncoder.encode("1234"))
-                    .fechaNacimiento(LocalDate.of(2004, 5, 15))
-                    .peso(75.0)
-                    .altura(1.80)
-                    .objetivo(Objetivo.CONSEGUIR_MUSCULO)
-                    .nivel(Nivel.INTERMEDIO)
-                    .diasEntreno(4)
-                    .tieneRutina(false)
+                    .rol(Rol.USUARIO) // Pasamos este a usuario normal para testear
                     .activo(true)
-                    .rol(Rol.ADMIN)
                     .build();
-
             usuarioRepository.save(testUser);
-            System.out.println("✅ Usuario de prueba creado: javip / 1234");
+            System.out.println("✅ Usuario estándar creado: javip / 1234");
         }
     }
 }

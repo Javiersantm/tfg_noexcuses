@@ -1,7 +1,7 @@
 package com.javiersm.noexcuses.entrenamientos.infra;
 
 import com.javiersm.noexcuses.entrenamientos.aplicacion.EntrenamientoService;
-import com.javiersm.noexcuses.entrenamientos.dominio.Entrenamiento;
+import com.javiersm.noexcuses.entrenamientos.aplicacion.dto.CompletarEntrenoDto; // 🚀 EL IMPORT QUE FALTABA
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/tracking")
+@RequestMapping("/api/entrenamientos")
 public class EntrenamientoController {
 
     private final EntrenamientoService entrenamientoService;
@@ -18,25 +18,22 @@ public class EntrenamientoController {
         this.entrenamientoService = entrenamientoService;
     }
 
-    // 1. Guardar el entreno cuando le dé a Finalizar
-    @PostMapping("/finalizar")
-    public ResponseEntity<String> registrarEntrenamiento(@RequestBody Entrenamiento entrenamiento, Authentication authentication) {
+    @PostMapping(value = "/completar", consumes = {"multipart/form-data"})
+    public ResponseEntity<String> completarEntrenamiento(
+            @RequestPart("datos") CompletarEntrenoDto dto,
+            @RequestPart(value = "foto", required = false) org.springframework.web.multipart.MultipartFile foto,
+            Authentication authentication) {
         try {
-            entrenamientoService.registrarEntrenamiento(entrenamiento, authentication.getName());
-            return ResponseEntity.ok("¡Entrenamiento registrado! El día se pondrá en verde.");
+            String mensaje = entrenamientoService.registrarEntrenamientoHoy(authentication.getName(), dto, foto);
+            return ResponseEntity.ok(mensaje);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error al guardar: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
 
-    // 2. Obtener los entrenos de un mes concreto para el Dashboard
-    @GetMapping("/mes")
-    public ResponseEntity<List<Entrenamiento>> obtenerParaCalendario(
-            @RequestParam int anio,
-            @RequestParam int mes,
-            Authentication authentication) {
-
-        List<Entrenamiento> entrenamientos = entrenamientoService.obtenerEntrenamientosDelMes(authentication.getName(), anio, mes);
-        return ResponseEntity.ok(entrenamientos);
+    @GetMapping("/calendario")
+    public ResponseEntity<List<Integer>> obtenerCalendario(@RequestParam int year, @RequestParam int month, Authentication authentication) {
+        List<Integer> dias = entrenamientoService.obtenerDiasDelMes(authentication.getName(), year, month);
+        return ResponseEntity.ok(dias);
     }
 }

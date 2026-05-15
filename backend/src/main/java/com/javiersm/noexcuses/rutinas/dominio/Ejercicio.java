@@ -33,4 +33,7 @@ public class Ejercicio {
     private String equipo; // Ej: barbell, dumbbell, body weight...
 
     private String gifUrl; // ¡Aquí guardaremos el enlace al GIF animado!
+
+    @Builder.Default
+    private boolean activo = true;
 }

@@ -11,5 +11,6 @@ public class ExerciseDbDto {
     private String target;
     private String equipment;
     private String gifUrl;
-    private List<String> instructions; // La API devuelve las instrucciones como una lista de textos
+    private List<String> instructions;
+    private String description;
 }

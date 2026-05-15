@@ -56,4 +56,7 @@ public class Usuario {
 
     // Guardaremos el nombre del archivo o la URL de su foto de perfil
     private String fotoPerfilUrl;
+
+    @Builder.Default
+    private LocalDate fechaRegistro = LocalDate.now();
 }
