@@ -109,9 +109,10 @@ export default function Estadisticas() {
 
         <main className="p-6 md:p-8 max-w-7xl mx-auto flex flex-col gap-8">
 
-          {/* TARJETAS RESUMEN */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-gray-900 p-6 rounded-3xl border border-gray-800 shadow-xl flex flex-col gap-2">
+          {/* TARJETAS RESUMEN (Aparición rápida) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
+            <div className="bg-gray-900 p-6 rounded-3xl border border-gray-800 shadow-xl flex flex-col gap-2 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-gray-800/50 rounded-bl-full pointer-events-none"></div>
               <span className="text-gray-500 text-xs font-bold uppercase tracking-widest">Total Entrenos</span>
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🔥</span>
@@ -119,7 +120,8 @@ export default function Estadisticas() {
               </div>
             </div>
 
-            <div className="bg-gray-900 p-6 rounded-3xl border border-gray-800 shadow-xl flex flex-col gap-2">
+            <div className="bg-gray-900 p-6 rounded-3xl border border-gray-800 shadow-xl flex flex-col gap-2 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-gray-800/50 rounded-bl-full pointer-events-none"></div>
               <span className="text-gray-500 text-xs font-bold uppercase tracking-widest">Año Actual</span>
               <div className="flex items-center gap-3">
                 <span className="text-2xl">📅</span>
@@ -146,24 +148,40 @@ export default function Estadisticas() {
             </div>
           </div>
 
-          {/* 🚀 CONTENEDOR GRID: 1 columna en móvil, 2 columnas en PC */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {/* 🚀 CONTENEDOR GRID CON LIGERO RETRASO PARA EFECTO CASCADA */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 animate-fade-in" style={{ animationDelay: '150ms', animationFillMode: 'both' }}>
 
             {/* GRÁFICA 1: ENTRENAMIENTOS POR MES */}
             <div className="bg-gray-900 p-6 md:p-8 rounded-3xl border border-gray-800 shadow-2xl flex flex-col gap-6 relative overflow-hidden">
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-800 to-red-500"></div>
               <h3 className="text-xl font-bold text-white border-b border-gray-800 pb-4">Entrenamientos por Mes</h3>
-              <div className="w-full h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={datosGrafica} margin={{ top: 20, right: 30, left: -20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-                    <XAxis dataKey="name" stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 12, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
-                    <YAxis stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip content={<CustomTooltipBar />} cursor={{ fill: '#1f2937', opacity: 0.4 }} />
-                    <Bar dataKey="entrenos" fill="#EF4444" radius={[6, 6, 0, 0]} animationDuration={1500} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+
+              {totalEntrenos > 0 ? (
+                <div className="w-full h-[350px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={datosGrafica} margin={{ top: 20, right: 30, left: -20, bottom: 5 }}>
+                      <defs>
+                        {/* 🚀 GRADIENTE ROJO PARA LAS BARRAS */}
+                        <linearGradient id="colorBarra" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#EF4444" stopOpacity={1}/>
+                          <stop offset="100%" stopColor="#991B1B" stopOpacity={1}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                      <XAxis dataKey="name" stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 12, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
+                      <YAxis stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                      <Tooltip content={<CustomTooltipBar />} cursor={{ fill: '#1f2937', opacity: 0.4 }} />
+                      <Bar dataKey="entrenos" fill="url(#colorBarra)" radius={[6, 6, 0, 0]} animationDuration={1500} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-[350px] text-gray-500">
+                  <span className="text-4xl mb-2 opacity-50">📊</span>
+                  <p className="font-bold text-gray-400">Sin datos este año</p>
+                  <p className="text-sm">¡Ve al Dashboard y completa tu primer entreno!</p>
+                </div>
+              )}
             </div>
 
             {/* GRÁFICA 2: EVOLUCIÓN DEL PESO CORPORAL */}
@@ -178,23 +196,24 @@ export default function Estadisticas() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
                       <XAxis dataKey="fechaStr" stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 12, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
                       <YAxis stroke="#6b7280" tick={{ fill: '#6b7280', fontSize: 12 }} axisLine={false} tickLine={false} domain={['dataMin - 2', 'dataMax + 2']} />
-                      <Tooltip content={<CustomTooltipLine />} cursor={{ stroke: '#374151', strokeWidth: 2 }} />
+                      <Tooltip content={<CustomTooltipLine />} cursor={{ stroke: '#374151', strokeWidth: 2, strokeDasharray: '5 5' }} />
                       <Line
                         type="monotone"
                         dataKey="peso"
                         stroke="#F97316"
                         strokeWidth={4}
-                        dot={{ r: 6, fill: '#F97316', stroke: '#111827', strokeWidth: 2 }}
-                        activeDot={{ r: 8 }}
+                        /* 🚀 DOTS (Puntos) un poco más modernos */
+                        dot={{ r: 5, fill: '#1F2937', stroke: '#F97316', strokeWidth: 3 }}
+                        activeDot={{ r: 8, fill: '#F97316', stroke: '#fff', strokeWidth: 2 }}
                         animationDuration={1500}
                       />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-[200px] text-gray-500">
+                <div className="flex flex-col items-center justify-center h-[350px] text-gray-500">
                   <span className="text-4xl mb-2 opacity-50">⚖️</span>
-                  <p className="font-bold">Aún no hay datos de peso</p>
+                  <p className="font-bold text-gray-400">Aún no hay datos de peso</p>
                   <p className="text-sm">Registra tu peso al finalizar un entreno.</p>
                 </div>
               )}

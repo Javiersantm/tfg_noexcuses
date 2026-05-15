@@ -56,14 +56,15 @@ public class EntrenamientoService {
             rutaFoto = "/uploads/progreso/" + nombreArchivo;
         }
 
-        // 1. Guardamos el entrenamiento con la foto
+        // 1. Guardamos el entrenamiento con la foto y EL ID DEL DÍA 🚀
         Entrenamiento nuevoEntrenamiento = Entrenamiento.builder()
                 .usuario(usuario)
                 .fecha(hoy)
                 .sensacion(dto.getSensacion())
                 .eficiencia(dto.getEficiencia())
                 .pesoCorporal(dto.getPesoCorporal())
-                .fotoUrl(rutaFoto) // 🚀 Guardamos la URL
+                .fotoUrl(rutaFoto)
+                .diaRutinaId(dto.getDiaRutinaId()) // 🚀 AQUÍ GUARDAMOS EL ID DEL DÍA
                 .build();
         entrenamientoRepository.save(nuevoEntrenamiento);
 
@@ -98,5 +99,22 @@ public class EntrenamientoService {
     public List<Integer> obtenerDiasDelMes(String username, int year, int month) {
         Usuario usuario = usuarioRepository.findByUsername(username).orElseThrow();
         return entrenamientoRepository.findDiasEntrenadosPorMes(usuario, year, month);
+    }
+
+    // 🚀 NUEVO: Método para devolver los días completados en la última semana
+    @Transactional(readOnly = true)
+    public List<Long> obtenerDiasCompletadosEstaSemana(String username) {
+        Usuario usuario = usuarioRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        // Buscamos entrenamientos de los últimos 7 días
+        LocalDate haceUnaSemana = LocalDate.now().minusDays(7);
+
+        return entrenamientoRepository.findByUsuarioAndFechaAfter(usuario, haceUnaSemana)
+                .stream()
+                .map(Entrenamiento::getDiaRutinaId)
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
     }
 }

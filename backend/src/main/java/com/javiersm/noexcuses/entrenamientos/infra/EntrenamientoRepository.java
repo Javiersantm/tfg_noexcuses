@@ -18,4 +18,6 @@ public interface EntrenamientoRepository extends JpaRepository<Entrenamiento, Lo
 
     @Query("SELECT EXTRACT(DAY FROM e.fecha) FROM Entrenamiento e WHERE e.usuario = :usuario AND EXTRACT(YEAR FROM e.fecha) = :year AND EXTRACT(MONTH FROM e.fecha) = :month")
     List<Integer> findDiasEntrenadosPorMes(Usuario usuario, int year, int month);
+
+    List<Entrenamiento> findByUsuarioAndFechaAfter(Usuario usuario, LocalDate fecha);
 }

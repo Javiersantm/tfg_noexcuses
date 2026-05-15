@@ -4,46 +4,80 @@ import api from '../services/api';
 import Calendario from '../components/Calendario';
 import Sidebar from '../components/Sidebar';
 
+// 🚀 SOLUCIÓN: Aislamos el Slider para que no congele el Dashboard al arrastrar
+const SliderAislado = ({ label, max = 10, initialValue, onFinalChange }) => {
+  // Estado local solo para la animación fluida de la bolita
+  const [localValue, setLocalValue] = useState(initialValue);
+  const porcentaje = (localValue / max) * 100;
+
+  const handleChange = (e) => {
+    const val = Number(e.target.value);
+    setLocalValue(val); // Actualiza la UI al instante
+    onFinalChange(val); // Notifica al Dashboard del cambio
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex justify-between items-end">
+        <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">{label}</label>
+        <span className="text-white text-2xl font-black">{localValue}<span className="text-gray-500 text-base">/{max}</span></span>
+      </div>
+      <input
+        type="range"
+        min="0"
+        max={max}
+        value={localValue}
+        onChange={handleChange}
+        className="w-full h-3 rounded-full appearance-none cursor-pointer outline-none shadow-inner border border-gray-800
+                   [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-7 [&::-webkit-slider-thumb]:h-7
+                   [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full
+                   [&::-webkit-slider-thumb]:border-4 [&::-webkit-slider-thumb]:border-red-500 [&::-webkit-slider-thumb]:shadow-lg
+                   [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-7 [&::-moz-range-thumb]:h-7
+                   [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:rounded-full
+                   [&::-moz-range-thumb]:border-4 [&::-moz-range-thumb]:border-red-500 [&::-moz-range-thumb]:shadow-lg"
+        style={{
+          background: `linear-gradient(to right, #EF4444 ${porcentaje}%, #111827 ${porcentaje}%)`
+        }}
+      />
+    </div>
+  );
+};
+
+
 export default function Dashboard() {
-  const [perfilUsuario, setPerfilUsuario] = useState(null); // Guardamos el perfil para leer los ajustes
+  const [perfilUsuario, setPerfilUsuario] = useState(null);
   const [nombre, setNombre] = useState('');
   const [generando, setGenerando] = useState(false);
   const [rutina, setRutina] = useState(null);
   const [refrescoCalendario, setRefrescoCalendario] = useState(0);
 
-  // 🚀 ESTADOS DE SELECCIÓN Y FINALIZACIÓN (BASADOS EN BACKEND)
   const [diaSeleccionado, setDiaSeleccionado] = useState(null);
-  const [diasCompletadosIds, setDiasCompletadosIds] = useState([]); // Ahora guarda un array de IDs de la BD
+  const [diasCompletadosIds, setDiasCompletadosIds] = useState([]);
   const [entrenoHoyFinalizado, setEntrenoHoyFinalizado] = useState(false);
 
   const [avisoAdmin, setAvisoAdmin] = useState(null);
   const navigate = useNavigate();
 
-  // 🚀 ESTADOS DEL MODAL DE FEEDBACK
   const [mostrarModal, setMostrarModal] = useState(false);
   const [feedback, setFeedback] = useState({ sensacion: 5, eficiencia: 5, pesoCorporal: '' });
   const [archivoFoto, setArchivoFoto] = useState(null);
 
-  // 🏋️‍♂️ ESTADOS DEL MODO ENTRENANDO (FOCUS)
   const [modoEntrenando, setModoEntrenando] = useState(false);
-  const [cuentaAtras, setCuentaAtras] = useState(null); // Estado para la pantalla "3, 2, 1, ¡YA!"
+  const [cuentaAtras, setCuentaAtras] = useState(null);
   const [diaEntrenoActivo, setDiaEntrenoActivo] = useState(null);
   const [ejercicioActualIndex, setEjercicioActualIndex] = useState(0);
   const [registroSeries, setRegistroSeries] = useState({});
 
-  // ⏱️ ESTADOS DEL CRONÓMETRO DE DESCANSO
   const [tiempoDescanso, setTiempoDescanso] = useState(0);
   const [descansoActivo, setDescansoActivo] = useState(false);
 
-  // 🚀 NUEVA FUNCIÓN MAESTRA QUE CARGA TODA LA VERDAD DESDE EL SERVIDOR
   const cargarTodo = async () => {
     try {
-      // Pedimos todo a la vez para que sea rápido
       const [resPerfil, resRutina, resHistorial, resEstadoSemana] = await Promise.all([
         api.get('/perfil'),
         api.get('/entrenamiento/mi-rutina'),
         api.get('/perfil/historial'),
-        api.get('/entrenamientos/estado-semana').catch(() => ({ data: [] })) // El nuevo endpoint
+        api.get('/entrenamientos/estado-semana').catch(() => ({ data: [] }))
       ]);
 
       setPerfilUsuario(resPerfil.data);
@@ -57,10 +91,8 @@ export default function Dashboard() {
         setRutina(null);
       }
 
-      // 1. Array de IDs de días completados (del Backend)
       setDiasCompletadosIds(resEstadoSemana.data || []);
 
-      // 2. Comprobamos si el último entreno del historial tiene fecha de hoy
       if (resHistorial.data && resHistorial.data.length > 0) {
         const ultimaFecha = new Date(resHistorial.data[0].fecha).toLocaleDateString('es-ES');
         const hoy = new Date().toLocaleDateString('es-ES');
@@ -82,7 +114,7 @@ export default function Dashboard() {
       navigate('/login');
     } else {
       setNombre(usuarioGuardado || 'Atleta');
-      cargarTodo(); // Llamamos a la función maestra
+      cargarTodo();
 
       api.get('/admin/aviso').then(res => {
         if (res.data && res.data.activo && res.data.mensaje.trim() !== '') {
@@ -114,7 +146,7 @@ export default function Dashboard() {
         await api.post('/entrenamiento/generar');
         alert("¡Rutina generada con éxito!");
 
-        await cargarTodo(); // 🚀 Recargamos todo del backend para ver los cambios
+        await cargarTodo();
         setDiaSeleccionado(null);
 
       } catch (error) {
@@ -124,7 +156,6 @@ export default function Dashboard() {
       }
   };
 
-  // 🚀 LÓGICA DE LA CUENTA ATRÁS Y EMPEZAR
   const comenzarEntrenamiento = (dia) => {
     setDiaEntrenoActivo(dia);
     setEjercicioActualIndex(0);
@@ -155,7 +186,6 @@ export default function Dashboard() {
     }));
   };
 
-  // 🚀 LÓGICA DEL BOTÓN DE COMPLETAR SERIE (✓)
   const completarSerie = (ejDiaId, serieIndex) => {
     manejarCambioSerie(ejDiaId, serieIndex, 'completada', true);
 
@@ -200,7 +230,7 @@ export default function Dashboard() {
         sensacion: feedback.sensacion,
         eficiencia: feedback.eficiencia,
         pesoCorporal: feedback.pesoCorporal === '' ? null : parseFloat(feedback.pesoCorporal),
-        diaRutinaId: diaEntrenoActivo.id, // 🚀 ENVIAMOS QUÉ DÍA SE COMPLETÓ
+        diaRutinaId: diaEntrenoActivo.id,
         series: arraySeries.filter(s => !isNaN(s.peso))
       };
 
@@ -220,7 +250,6 @@ export default function Dashboard() {
       setArchivoFoto(null);
       setDiaSeleccionado(null);
 
-      // 🚀 UNA VEZ ENVIADO, LE PEDIMOS AL SERVIDOR QUE NOS ACTUALICE LA VISTA
       await cargarTodo();
 
     } catch (error) {
@@ -229,7 +258,6 @@ export default function Dashboard() {
   };
 
   if (modoEntrenando && diaEntrenoActivo) {
-    // 🚀 PANTALLA ROJA DE CUENTA ATRÁS
     if (cuentaAtras !== null) {
       return (
         <div className="min-h-screen bg-red-600 flex flex-col items-center justify-center text-white z-[200]">
@@ -345,7 +373,6 @@ export default function Dashboard() {
                       />
                     </div>
 
-                    {/* 🚀 BOTÓN DE CHECK PARA MARCAR SERIE Y ACTIVAR CRONO */}
                     <div className="col-span-2 flex justify-center">
                       <button
                         onClick={() => vals.completada ? manejarCambioSerie(ejDia.ejercicio.id, i, 'completada', false) : completarSerie(ejDia.ejercicio.id, i)}
@@ -384,52 +411,64 @@ export default function Dashboard() {
 
         {mostrarModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fade-in">
-            <div className="bg-gray-900 rounded-3xl p-6 md:p-8 w-full max-w-md border border-gray-700 shadow-2xl flex flex-col gap-6 max-h-[90vh] overflow-y-auto">
+            <div className="bg-gray-900 rounded-3xl p-6 md:p-8 w-full max-w-md border border-gray-700 shadow-2xl flex flex-col gap-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
 
               <div className="text-center">
-                <span className="text-4xl block mb-2">🔥</span>
-                <h2 className="text-2xl md:text-3xl font-black text-white uppercase italic tracking-tighter">Entreno Superado</h2>
+                <span className="text-5xl block mb-3 drop-shadow-[0_0_15px_rgba(220,38,38,0.5)]">🔥</span>
+                <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter">Entreno Superado</h2>
+                <p className="text-gray-400 font-bold text-sm mt-1">Registra tu progreso para las estadísticas</p>
               </div>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest flex justify-between items-center">
-                  Sensación <span className="text-white text-lg">{feedback.sensacion}/10</span>
-                </label>
-                <input type="range" min="0" max="10" value={feedback.sensacion} onChange={e => setFeedback({...feedback, sensacion: Number(e.target.value)})} className="w-full h-3 bg-gray-800 rounded-full appearance-none cursor-pointer accent-red-500" />
-              </div>
+              <div className="flex flex-col gap-6">
 
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest flex justify-between items-center">
-                  Eficiencia <span className="text-white text-lg">{feedback.eficiencia}/10</span>
-                </label>
-                <input type="range" min="0" max="10" value={feedback.eficiencia} onChange={e => setFeedback({...feedback, eficiencia: Number(e.target.value)})} className="w-full h-3 bg-gray-800 rounded-full appearance-none cursor-pointer accent-red-500" />
-              </div>
+                {/* 🚀 USANDO EL SLIDER AISLADO PARA EVITAR LAG */}
+                <SliderAislado
+                  label="Sensación del Entreno"
+                  initialValue={feedback.sensacion}
+                  onFinalChange={(val) => setFeedback({...feedback, sensacion: val})}
+                />
 
-              <div className="flex gap-4">
-                <div className="flex-1 flex flex-col gap-2">
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Peso Hoy (KG)</label>
-                  <input type="number" step="0.1" value={feedback.pesoCorporal} onChange={e => setFeedback({...feedback, pesoCorporal: e.target.value})} className="w-full bg-gray-950 border border-gray-800 text-white font-black text-xl p-4 rounded-2xl outline-none text-center focus:border-red-500" />
+                <SliderAislado
+                  label="Eficiencia / Ritmo"
+                  initialValue={feedback.eficiencia}
+                  onFinalChange={(val) => setFeedback({...feedback, eficiencia: val})}
+                />
+
+                <div className="flex flex-col gap-3">
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Peso Hoy (Opcional)</label>
+                  <div className="relative w-full max-w-[200px] mx-auto">
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={feedback.pesoCorporal}
+                      onChange={e => setFeedback({...feedback, pesoCorporal: e.target.value})}
+                      className="w-full bg-gray-950 border-2 border-gray-800 text-white font-black text-3xl py-4 rounded-2xl outline-none text-center focus:border-red-500 transition-colors"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">KG</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 pt-4 border-t border-gray-800">
+                   <label className="text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Foto de progreso (Opcional)</label>
+                   <div className="flex gap-3">
+                     <label className="flex-1 flex flex-col items-center justify-center p-4 bg-gray-950 border border-gray-800 rounded-2xl cursor-pointer hover:border-red-500 hover:bg-red-500/10 active:scale-95 transition-all group">
+                       <span className="text-2xl mb-1 group-hover:scale-110 transition-transform">🖼️</span>
+                       <span className="text-xs font-bold text-gray-400 group-hover:text-red-400">Galería</span>
+                       <input type="file" accept="image/*" className="hidden" onChange={(e) => setArchivoFoto(e.target.files[0])} />
+                     </label>
+                     <label className="flex-1 flex flex-col items-center justify-center p-4 bg-gray-950 border border-gray-800 rounded-2xl cursor-pointer hover:border-red-500 hover:bg-red-500/10 active:scale-95 transition-all group">
+                       <span className="text-2xl mb-1 group-hover:scale-110 transition-transform">📷</span>
+                       <span className="text-xs font-bold text-gray-400 group-hover:text-red-400">Cámara</span>
+                       <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => setArchivoFoto(e.target.files[0])} />
+                     </label>
+                   </div>
+                   {archivoFoto && <p className="text-xs text-green-500 font-bold text-center bg-green-500/10 py-2 rounded-lg border border-green-500/20">✅ Archivo seleccionado: {archivoFoto.name}</p>}
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2">
-                 <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Foto de progreso</label>
-                 <div className="flex gap-3">
-                   <label className="flex-1 flex items-center justify-center p-4 bg-gray-950 border border-gray-800 rounded-2xl cursor-pointer hover:border-red-500 active:scale-95 transition-all">
-                     <span className="text-2xl mr-2">🖼️</span> <span className="text-sm font-bold text-gray-400">Galería</span>
-                     <input type="file" accept="image/*" className="hidden" onChange={(e) => setArchivoFoto(e.target.files[0])} />
-                   </label>
-                   <label className="flex-1 flex items-center justify-center p-4 bg-gray-950 border border-gray-800 rounded-2xl cursor-pointer hover:border-red-500 active:scale-95 transition-all">
-                     <span className="text-2xl mr-2">📷</span> <span className="text-sm font-bold text-gray-400">Cámara</span>
-                     <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => setArchivoFoto(e.target.files[0])} />
-                   </label>
-                 </div>
-                 {archivoFoto && <p className="text-xs text-green-500 font-bold text-center mt-2">✅ Foto lista para subir</p>}
-              </div>
-
               <div className="flex gap-3 mt-2">
-                <button onClick={() => setMostrarModal(false)} className="px-6 py-4 rounded-2xl font-bold text-gray-400 bg-gray-800 hover:bg-gray-700 transition-colors">Atrás</button>
-                <button onClick={enviarEntrenamiento} className="flex-1 py-4 rounded-2xl font-black text-white uppercase tracking-widest bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 shadow-lg shadow-red-600/30 active:scale-95 transition-all">Guardar 🔥</button>
+                <button onClick={() => setMostrarModal(false)} className="px-6 py-4 rounded-2xl font-bold text-gray-400 bg-gray-800 hover:bg-gray-700 transition-colors">Cancelar</button>
+                <button onClick={enviarEntrenamiento} className="flex-1 py-4 rounded-2xl font-black text-white uppercase tracking-widest bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 shadow-lg shadow-red-600/30 active:scale-95 transition-all">Terminar y Guardar 🚀</button>
               </div>
             </div>
           </div>
@@ -439,110 +478,112 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-gray-950 text-gray-100 font-sans overflow-hidden">
-
-      {avisoAdmin && (
-        <div className="absolute top-0 left-0 w-full z-[100] bg-gradient-to-r from-yellow-600 to-orange-600 p-3 text-center shadow-lg animate-fade-in">
-           <p className="text-white font-black text-sm uppercase tracking-tighter">
-             ⚠️ AVISO: <span className="font-bold">{avisoAdmin}</span>
-           </p>
-        </div>
-      )}
+    <div className="flex flex-col md:flex-row h-screen bg-gray-950 text-gray-100 font-sans overflow-hidden relative">
 
       <Sidebar />
 
-      <div className={`flex-1 overflow-y-auto custom-scrollbar pb-24 md:pb-0 ${avisoAdmin ? 'pt-12' : ''}`}>
-        <header className="p-6 md:p-8 pb-0 max-w-7xl mx-auto flex justify-between items-end">
-          <div>
-            <p className="text-gray-400 font-bold mb-1">Bienvenido de nuevo,</p>
-            <h2 className="text-3xl md:text-4xl font-black text-white">Atleta <span className="text-red-500">{nombre}</span> 👋</h2>
+      {/* 🚀 EL AVISO DEL ADMIN DENTRO DEL CONTENEDOR */}
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        {avisoAdmin && (
+          <div className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 p-3 text-center shadow-md border-b border-yellow-500/50 flex-shrink-0 animate-slide-down">
+             <p className="text-white font-black text-sm uppercase tracking-tighter flex items-center justify-center gap-2">
+               <span>⚠️</span> <span>AVISO: <span className="font-bold">{avisoAdmin}</span></span> <span>⚠️</span>
+             </p>
           </div>
-        </header>
+        )}
 
-        <main className="p-6 md:p-8 max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-3 gap-8">
-          <div className="xl:col-span-2 flex flex-col gap-4">
-            <h2 className="text-2xl font-bold text-white border-b border-gray-800 pb-2">Tu Progreso Mensual</h2>
-            <Calendario refresco={refrescoCalendario} />
-          </div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar pb-24 md:pb-0">
+          <header className="p-6 md:p-8 pb-0 max-w-7xl mx-auto flex justify-between items-end">
+            <div>
+              <p className="text-gray-400 font-bold mb-1">Bienvenido de nuevo,</p>
+              <h2 className="text-3xl md:text-4xl font-black text-white">Atleta <span className="text-red-500">{nombre}</span> 👋</h2>
+            </div>
+          </header>
 
-          <div className="flex flex-col gap-4">
-            <h2 className="text-2xl font-bold text-white border-b border-gray-800 pb-2">Plan de Entrenamiento</h2>
+          <main className="p-6 md:p-8 max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-3 gap-8">
+            <div className="xl:col-span-2 flex flex-col gap-4">
+              <h2 className="text-2xl font-bold text-white border-b border-gray-800 pb-2">Tu Progreso Mensual</h2>
+              <Calendario refresco={refrescoCalendario} />
+            </div>
 
-            <div className="bg-gray-900 p-6 rounded-3xl border border-gray-800 shadow-2xl flex flex-col relative h-full">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-red-800"></div>
+            <div className="flex flex-col gap-4">
+              <h2 className="text-2xl font-bold text-white border-b border-gray-800 pb-2">Plan de Entrenamiento</h2>
 
-              {rutina ? (
-                <div className="flex flex-col h-full">
-                  <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-3">
-                    <h3 className="text-lg md:text-xl font-black uppercase italic text-white drop-shadow-md">{rutina.nombre}</h3>
-                    <button onClick={handleGenerarRutina} disabled={generando} className={`text-xs md:text-sm font-bold py-2 px-3 md:px-4 rounded-lg transition-all shadow-md flex items-center gap-2 ${generando ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-gray-800 hover:bg-red-600 text-white hover:shadow-red-600/40 border border-gray-700'}`}>
-                      <span className={generando ? "animate-spin" : ""}>↻</span> Regenerar
-                    </button>
-                  </div>
+              <div className="bg-gray-900 p-6 rounded-3xl border border-gray-800 shadow-2xl flex flex-col relative h-full">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-red-800"></div>
 
-                  <div className="flex flex-col gap-3 pb-4 flex-1">
-                    {rutina.dias.map((dia) => {
-                      // 🚀 VERIFICAMOS CON EL ARRAY DE IDs DEL BACKEND
-                      const completado = diasCompletadosIds.includes(dia.id);
-                      const seleccionado = diaSeleccionado?.id === dia.id;
+                {rutina ? (
+                  <div className="flex flex-col h-full">
+                    <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-3">
+                      <h3 className="text-lg md:text-xl font-black uppercase italic text-white drop-shadow-md">{rutina.nombre}</h3>
+                      <button onClick={handleGenerarRutina} disabled={generando} className={`text-xs md:text-sm font-bold py-2 px-3 md:px-4 rounded-lg transition-all shadow-md flex items-center gap-2 ${generando ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-gray-800 hover:bg-red-600 text-white hover:shadow-red-600/40 border border-gray-700'}`}>
+                        <span className={generando ? "animate-spin" : ""}>↻</span> Regenerar
+                      </button>
+                    </div>
 
-                      return (
-                        <div
-                          key={dia.id}
-                          onClick={() => !completado && !entrenoHoyFinalizado && setDiaSeleccionado(dia)}
-                          className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex justify-between items-center ${
-                            completado
-                              ? 'bg-green-900/20 border-green-500/50 text-green-400 cursor-default'
-                              : seleccionado
-                                ? 'bg-red-900/20 border-red-500 shadow-lg shadow-red-500/20'
-                                : entrenoHoyFinalizado
-                                  ? 'bg-gray-950 border-gray-800 opacity-50 cursor-not-allowed'
-                                  : 'bg-gray-950 border-gray-800 hover:border-gray-600'
+                    <div className="flex flex-col gap-3 pb-4 flex-1">
+                      {rutina.dias.map((dia) => {
+                        const completado = diasCompletadosIds.includes(dia.id);
+                        const seleccionado = diaSeleccionado?.id === dia.id;
+
+                        return (
+                          <div
+                            key={dia.id}
+                            onClick={() => !completado && !entrenoHoyFinalizado && setDiaSeleccionado(dia)}
+                            className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex justify-between items-center ${
+                              completado
+                                ? 'bg-green-900/20 border-green-500/50 text-green-400 cursor-default'
+                                : seleccionado
+                                  ? 'bg-red-900/20 border-red-500 shadow-lg shadow-red-500/20'
+                                  : entrenoHoyFinalizado
+                                    ? 'bg-gray-950 border-gray-800 opacity-50 cursor-not-allowed'
+                                    : 'bg-gray-950 border-gray-800 hover:border-gray-600'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl">{completado ? '✅' : '💪'}</span>
+                              <h4 className={`font-bold text-lg ${completado ? 'text-green-500' : 'text-white'}`}>
+                                {dia.nombreDia}
+                              </h4>
+                            </div>
+                            {completado && <span className="text-xs font-bold uppercase tracking-widest text-green-500 bg-green-500/10 px-3 py-1 rounded-lg">Hecho</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-4 border-t border-gray-800 pt-6">
+                      {entrenoHoyFinalizado ? (
+                        <button disabled className="w-full bg-green-600/20 border border-green-500/50 text-green-500 font-black py-4 rounded-xl flex justify-center items-center gap-2 uppercase tracking-widest text-sm cursor-not-allowed shadow-lg shadow-green-500/10">
+                          <span className="text-xl">🏆</span> Entreno de hoy finalizado
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => comenzarEntrenamiento(diaSeleccionado)}
+                          disabled={!diaSeleccionado}
+                          className={`w-full font-black py-4 rounded-xl flex justify-center items-center gap-2 uppercase tracking-widest text-sm transition-all shadow-lg active:scale-95 ${
+                            diaSeleccionado
+                              ? 'bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white shadow-red-600/30'
+                              : 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
                           }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl">{completado ? '✅' : '💪'}</span>
-                            <h4 className={`font-bold text-lg ${completado ? 'text-green-500' : 'text-white'}`}>
-                              {dia.nombreDia}
-                            </h4>
-                          </div>
-                          {completado && <span className="text-xs font-bold uppercase tracking-widest text-green-500 bg-green-500/10 px-3 py-1 rounded-lg">Hecho</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
+                          <span className="text-xl">🏋️‍♂️</span> {diaSeleccionado ? 'Empezar Entreno' : 'Selecciona un día'}
+                        </button>
+                      )}
+                    </div>
 
-                  <div className="mt-4 border-t border-gray-800 pt-6">
-                    {entrenoHoyFinalizado ? (
-                      <button disabled className="w-full bg-green-600/20 border border-green-500/50 text-green-500 font-black py-4 rounded-xl flex justify-center items-center gap-2 uppercase tracking-widest text-sm cursor-not-allowed shadow-lg shadow-green-500/10">
-                        <span className="text-xl">🏆</span> Entreno de hoy finalizado
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => comenzarEntrenamiento(diaSeleccionado)}
-                        disabled={!diaSeleccionado}
-                        className={`w-full font-black py-4 rounded-xl flex justify-center items-center gap-2 uppercase tracking-widest text-sm transition-all shadow-lg active:scale-95 ${
-                          diaSeleccionado
-                            ? 'bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white shadow-red-600/30'
-                            : 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700'
-                        }`}
-                      >
-                        <span className="text-xl">🏋️‍♂️</span> {diaSeleccionado ? 'Empezar Entreno' : 'Selecciona un día'}
-                      </button>
-                    )}
                   </div>
-
-                </div>
-              ) : (
-                <div className="flex flex-col justify-center items-center h-full text-center my-auto py-10">
-                  <div className="w-24 h-24 bg-gray-950 rounded-full flex items-center justify-center mb-6 shadow-xl border border-gray-800"><span className="text-5xl">🏋️‍♂️</span></div>
-                  <h3 className="text-2xl text-white font-bold mb-2">Sin rutina activa</h3>
-                  <button onClick={handleGenerarRutina} disabled={generando} className="w-full max-w-[250px] font-bold py-4 px-6 bg-red-600 rounded-xl text-white mt-4 hover:bg-red-500 shadow-lg shadow-red-600/30">Generar Automática</button>
-                </div>
-              )}
+                ) : (
+                  <div className="flex flex-col justify-center items-center h-full text-center my-auto py-10">
+                    <div className="w-24 h-24 bg-gray-950 rounded-full flex items-center justify-center mb-6 shadow-xl border border-gray-800"><span className="text-5xl">🏋️‍♂️</span></div>
+                    <h3 className="text-2xl text-white font-bold mb-2">Sin rutina activa</h3>
+                    <button onClick={handleGenerarRutina} disabled={generando} className="w-full max-w-[250px] font-bold py-4 px-6 bg-red-600 rounded-xl text-white mt-4 hover:bg-red-500 shadow-lg shadow-red-600/30">Generar Automática</button>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
     </div>
   );

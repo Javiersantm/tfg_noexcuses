@@ -1,7 +1,7 @@
 package com.javiersm.noexcuses.entrenamientos.infra;
 
 import com.javiersm.noexcuses.entrenamientos.aplicacion.EntrenamientoService;
-import com.javiersm.noexcuses.entrenamientos.aplicacion.dto.CompletarEntrenoDto; // 🚀 EL IMPORT QUE FALTABA
+import com.javiersm.noexcuses.entrenamientos.aplicacion.dto.CompletarEntrenoDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -23,7 +23,7 @@ public class EntrenamientoController {
             @RequestPart("datos") CompletarEntrenoDto dto,
             @RequestPart(value = "foto", required = false) org.springframework.web.multipart.MultipartFile foto,
             Authentication authentication) {
-        try {a
+        try { // 🚀 Corregido el typo aquí
             String mensaje = entrenamientoService.registrarEntrenamientoHoy(authentication.getName(), dto, foto);
             return ResponseEntity.ok(mensaje);
         } catch (Exception e) {
@@ -35,5 +35,10 @@ public class EntrenamientoController {
     public ResponseEntity<List<Integer>> obtenerCalendario(@RequestParam int year, @RequestParam int month, Authentication authentication) {
         List<Integer> dias = entrenamientoService.obtenerDiasDelMes(authentication.getName(), year, month);
         return ResponseEntity.ok(dias);
+    }
+
+    @GetMapping("/estado-semana")
+    public ResponseEntity<List<Long>> obtenerEstadoSemana(Authentication authentication) {
+        return ResponseEntity.ok(entrenamientoService.obtenerDiasCompletadosEstaSemana(authentication.getName()));
     }
 }

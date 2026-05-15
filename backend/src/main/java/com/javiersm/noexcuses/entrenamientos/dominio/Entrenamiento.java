@@ -36,6 +36,6 @@ public class Entrenamiento {
     private Usuario usuario;
 
     private String fotoUrl;
-
+    
     private Long diaRutinaId;
 }
