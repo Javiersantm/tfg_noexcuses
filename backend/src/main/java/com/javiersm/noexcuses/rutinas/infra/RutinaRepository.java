@@ -8,4 +8,6 @@ import java.util.List;
 public interface RutinaRepository extends JpaRepository<Rutina, Long> {
     // Para cargar el historial de rutinas de un usuario
     List<Rutina> findByUsuarioOrderByFechaCreacionDesc(Usuario usuario);
+
+    List<Rutina> findByUsuarioOrderByIdDesc(Usuario usuario);
 }

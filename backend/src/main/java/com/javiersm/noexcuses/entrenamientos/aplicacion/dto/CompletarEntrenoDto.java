@@ -7,6 +7,7 @@ import java.util.List;
 public class CompletarEntrenoDto {
     private Integer sensacion;
     private Integer eficiencia;
-    private Double pesoCorporal; // NUEVO: El peso del usuario hoy
-    private List<SerieDto> series; // NUEVO: La lista de lo que ha levantado
+    private Double pesoCorporal;
+    private List<SerieDto> series;
+    private Long diaRutinaId;
 }

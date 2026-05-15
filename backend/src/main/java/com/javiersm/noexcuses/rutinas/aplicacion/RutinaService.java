@@ -187,7 +187,8 @@ public class RutinaService {
         Usuario usuario = usuarioRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        List<Rutina> rutinas = rutinaRepository.findByUsuarioOrderByFechaCreacionDesc(usuario);
+        List<Rutina> rutinas = rutinaRepository.findByUsuarioOrderByIdDesc(usuario);
+
         if (rutinas.isEmpty()) return null;
 
         Rutina rutinaActiva = rutinas.get(0);

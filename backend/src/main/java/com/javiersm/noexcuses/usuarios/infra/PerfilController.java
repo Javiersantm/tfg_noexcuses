@@ -20,33 +20,23 @@ public class PerfilController {
         this.perfilService = perfilService;
     }
 
-    // 1. Obtener los datos del usuario logueado
     @GetMapping
     public ResponseEntity<Usuario> verPerfil(Authentication authentication) {
         return ResponseEntity.ok(perfilService.obtenerPerfil(authentication.getName()));
     }
 
-    // 2. Obtener el historial completo de entrenamientos
     @GetMapping("/historial")
     public ResponseEntity<List<Entrenamiento>> verHistorial(Authentication authentication) {
         return ResponseEntity.ok(perfilService.obtenerHistorial(authentication.getName()));
     }
 
-    // 3. Editar datos del perfil (peso, altura, etc.)
     @PutMapping("/editar")
     public ResponseEntity<Usuario> editarPerfil(@RequestBody Usuario datosActualizados, Authentication authentication) {
-        Usuario usuarioActualizado = perfilService.actualizarPerfil(authentication.getName(), datosActualizados);
-        return ResponseEntity.ok(usuarioActualizado);
+        return ResponseEntity.ok(perfilService.actualizarPerfil(authentication.getName(), datosActualizados));
     }
 
-    // 4. Subir la foto de perfil (Fíjate que usamos @RequestParam("foto") y MultipartFile)
     @PostMapping("/foto")
-    public ResponseEntity<String> subirFoto(@RequestParam("foto") MultipartFile foto, Authentication authentication) {
-        try {
-            String urlFoto = perfilService.subirFotoPerfil(authentication.getName(), foto);
-            return ResponseEntity.ok("Foto subida con éxito. URL: " + urlFoto);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error al subir la foto: " + e.getMessage());
-        }
+    public ResponseEntity<Usuario> subirFoto(@RequestParam("foto") MultipartFile foto, Authentication authentication) {
+        return ResponseEntity.ok(perfilService.actualizarFotoPerfil(authentication.getName(), foto));
     }
 }

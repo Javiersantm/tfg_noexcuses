@@ -48,15 +48,25 @@ public class Usuario {
     private Boolean tieneRutina;
 
     @Column(nullable = false)
-    private Boolean activo = true;
+    private Boolean activo;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Rol rol = Rol.USUARIO; // Por defecto será USUARIO
+    private Rol rol;
 
-    // Guardaremos el nombre del archivo o la URL de su foto de perfil
-    private String fotoPerfilUrl;
+    private LocalDate fechaRegistro;
 
-    @Builder.Default
-    private LocalDate fechaRegistro = LocalDate.now();
+    private String fotoPerfil;
+
+    @Column(nullable = false)
+    private Boolean cronometroAutomatico;
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.activo == null) this.activo = true; // Por defecto activo
+        if (this.rol == null) this.rol = Rol.USUARIO; // Por defecto usuario normal
+        if (this.fechaRegistro == null) this.fechaRegistro = LocalDate.now(); // Fecha de hoy
+        if (this.cronometroAutomatico == null) this.cronometroAutomatico = true; // Crono activado por defecto
+        if (this.tieneRutina == null) this.tieneRutina = false;
+    }
 }

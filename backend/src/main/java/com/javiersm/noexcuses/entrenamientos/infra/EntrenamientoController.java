@@ -23,7 +23,7 @@ public class EntrenamientoController {
             @RequestPart("datos") CompletarEntrenoDto dto,
             @RequestPart(value = "foto", required = false) org.springframework.web.multipart.MultipartFile foto,
             Authentication authentication) {
-        try {
+        try {a
             String mensaje = entrenamientoService.registrarEntrenamientoHoy(authentication.getName(), dto, foto);
             return ResponseEntity.ok(mensaje);
         } catch (Exception e) {

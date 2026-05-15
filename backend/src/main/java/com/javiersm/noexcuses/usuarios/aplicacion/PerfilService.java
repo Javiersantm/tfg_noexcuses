@@ -9,20 +9,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 public class PerfilService {
 
     private final UsuarioRepository usuarioRepository;
     private final EntrenamientoRepository entrenamientoRepository;
-
-    // Carpeta donde se guardarán las fotos en tu ordenador/servidor
-    private final String UPLOAD_DIR = "uploads/perfiles/";
 
     public PerfilService(UsuarioRepository usuarioRepository, EntrenamientoRepository entrenamientoRepository) {
         this.usuarioRepository = usuarioRepository;
@@ -45,38 +39,35 @@ public class PerfilService {
     public Usuario actualizarPerfil(String username, Usuario datosActualizados) {
         Usuario usuario = obtenerPerfil(username);
 
-        // Actualizamos solo los datos permitidos
         usuario.setPeso(datosActualizados.getPeso());
         usuario.setAltura(datosActualizados.getAltura());
         usuario.setObjetivo(datosActualizados.getObjetivo());
         usuario.setNivel(datosActualizados.getNivel());
         usuario.setDiasEntreno(datosActualizados.getDiasEntreno());
+        if (datosActualizados.getCronometroAutomatico() != null) {
+            usuario.setCronometroAutomatico(datosActualizados.getCronometroAutomatico());
+        }
 
         return usuarioRepository.save(usuario);
     }
 
+    // 🚀 UNIFICADO: Método para subir la foto de perfil
     @Transactional
-    public String subirFotoPerfil(String username, MultipartFile archivo) throws IOException {
+    public Usuario actualizarFotoPerfil(String username, MultipartFile file) {
         Usuario usuario = obtenerPerfil(username);
 
-        // 1. Crear la carpeta si no existe
-        Path rutaCarpeta = Paths.get(UPLOAD_DIR);
-        if (!Files.exists(rutaCarpeta)) {
-            Files.createDirectories(rutaCarpeta);
+        if (file != null && !file.isEmpty()) {
+            // Nombre único para que no se pisen las fotos
+            String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename().replace(" ", "_");
+            Path path = Paths.get("uploads/" + fileName);
+            try {
+                Files.createDirectories(path.getParent());
+                Files.copy(file.getInputStream(), path, StandardCopyOption.REPLACE_EXISTING);
+                usuario.setFotoPerfil(fileName);
+            } catch (IOException e) {
+                throw new RuntimeException("Error al guardar la foto: " + e.getMessage());
+            }
         }
-
-        // 2. Generar un nombre único para el archivo (para evitar que dos "foto.jpg" se sobreescriban)
-        String nombreArchivo = UUID.randomUUID().toString() + "_" + archivo.getOriginalFilename();
-        Path rutaArchivo = Paths.get(UPLOAD_DIR + nombreArchivo);
-
-        // 3. Guardar el archivo físicamente
-        Files.write(rutaArchivo, archivo.getBytes());
-
-        // 4. Guardar la URL en la base de datos (luego configuraremos Spring para que lea esta URL)
-        String urlFoto = "/uploads/perfiles/" + nombreArchivo;
-        usuario.setFotoPerfilUrl(urlFoto);
-        usuarioRepository.save(usuario);
-
-        return urlFoto;
+        return usuarioRepository.save(usuario);
     }
 }
