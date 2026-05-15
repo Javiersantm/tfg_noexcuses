@@ -3,7 +3,11 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import Registro from './pages/Registro';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard'; // <--- Importamos el Dashboard
+import Dashboard from './pages/Dashboard';
+import Perfil from './pages/Perfil';
+import Estadisticas from './pages/Estadisticas';
+import Evolucion from './pages/Evolucion';
+import AdminPanel from './pages/AdminPanel';
 
 function App() {
   return (
@@ -12,9 +16,11 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/registro" element={<Registro />} />
         <Route path="/login" element={<Login />} />
-
-        {/* Aquí conectamos la ruta con el componente que acabamos de crear */}
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/perfil" element={<Perfil />} />
+        <Route path="/estadisticas" element={<Estadisticas />} />
+        <Route path="/evolucion" element={<Evolucion />} />
+        <Route path="/admin" element={<AdminPanel />} />
       </Routes>
     </Router>
   );
